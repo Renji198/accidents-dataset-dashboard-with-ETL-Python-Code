@@ -1,0 +1,32 @@
+main with schedule
+
+from save import save,CACHE_FILE
+from tranform import transform
+from load import load
+import schedule
+import time
+Scheduled_Time= "09:00"
+
+
+def main():
+    print("start...............:)")
+    save()
+    print(f"Extract...Save to loacl system :) {CACHE_FILE}")
+
+    tranformstage=transform()
+    if tranformstage is None:
+        print("Tranform failed :(")
+        return
+    print("Load to BigQuery")
+    load(*tranformstage)
+
+    print("ETL completed :) :) :)")
+if __name__ == "__main__":
+    main()
+
+    schedule.every().day.at(Scheduled_Time).do(main)
+
+    while True:
+        schedule.run_pending()
+        time.sleep(60)
+        print(f"schedule is in progress and sheduled for {Scheduled_Time} :) :) :)")

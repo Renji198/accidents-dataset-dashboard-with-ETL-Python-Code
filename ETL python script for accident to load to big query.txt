@@ -1,0 +1,54 @@
+ETL python script for accident to load to big query
+
+import re
+
+def clean_columns(df):
+    df.columns = [
+        re.sub(r'[^a-zA-Z0-9_]', '_', col)  # replace invalid chars with _
+        for col in df.columns
+    ]
+    return df
+from google.cloud import bigquery
+
+def load(df_year, df_state_name, df_rail_year, df_rail_state_name,
+         df_suicide, df_vehicle_registration,
+         df_month_of_occurrence_rail, df_month_of_occurrence_road,df_road_classification_table):
+
+    client = bigquery.Client.from_service_account_json(
+        r"C:\Users\renji\OneDrive\Desktop\Accident data dump\accidents-data-c058a61aee07.json")  # ← new key file
+
+
+
+    PROJECT = "accidents-data"
+    DATASET = "accidents_data_load"
+
+    tables = {
+        "road_by_year":          df_year,
+        "road_by_state":         df_state_name,
+        "rail_by_year":          df_rail_year,
+        "rail_by_state":         df_rail_state_name,
+        "suicide":               df_suicide,
+        "vehicle_registration":  df_vehicle_registration,
+        "month_occurrence_rail": df_month_of_occurrence_rail,
+        "month_occurrence_road": df_month_of_occurrence_road,
+        "road_classification": df_road_classification_table,
+
+    }
+
+    job_config = bigquery.LoadJobConfig(write_disposition="WRITE_TRUNCATE")
+
+    for table_name, df in tables.items():
+        df = clean_columns(df)  # ← add this
+        table_id = f"{PROJECT}.{DATASET}.{table_name}"
+        job = client.load_table_from_dataframe(df, table_id, job_config=job_config)
+        job.result()
+        print(f" {table_name} loaded")
+
+    print("All tables loaded to BigQuery :)")
+
+
+if __name__ == "__main__":
+    from tranform import transform
+    result = transform()
+    if result:
+        load(*result)

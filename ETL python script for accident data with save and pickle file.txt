@@ -1,0 +1,22 @@
+ETL python script for accident data with save and pickle file
+
+import pickle
+import os
+from extract import extract
+
+CACHE_FILE = r"C:\Users\renji\OneDrive\Desktop\Accident data dump\data.pkl" # this is a local data file
+
+def save():
+    print("Fetching data :)")
+    data = extract()
+
+    if data is None:
+        print("Failed to get data")
+        return
+
+    with open(CACHE_FILE, "wb") as f:
+        pickle.dump(data, f)
+    print(f"Data saved to Desktop as data.pkl")
+
+if __name__ == "__main__":
+    save()

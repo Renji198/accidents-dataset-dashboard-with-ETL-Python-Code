@@ -1,0 +1,389 @@
+ETL python script for accident data with transform data
+
+import pandas as pd
+import pickle
+from functools import reduce
+
+CACHE_FILE = r"C:\Users\renji\OneDrive\Desktop\Accident data dump\data.pkl"
+
+def extract():
+    with open(CACHE_FILE, "rb") as f:
+        print("Loading :)")
+        return pickle.load(f)
+
+# =====================================merge_vehicle_columns=====================================
+def merge_vehicle_columns(df):
+
+    df["Four Wheelers"] = (
+        df["Car"] +
+        df["Jeep"] +
+        df["Suv/Station Wagon/Etc."] +
+        df["Suv / Car / Jeep / Etc."]
+    )
+    df["Truck"] = (
+        df["Truck/Lorry"] +
+        df["Truck/Lorry/Mini Truck"]
+    )
+    df = df.drop(columns=[
+        "Car", "Jeep", "Suv/Station Wagon/Etc.",
+        "Suv / Car / Jeep / Etc.", "Truck/Lorry",
+        "Truck/Lorry/Mini Truck"
+    ], errors="ignore")
+    return df
+
+
+def transform():
+    print("Started")
+    data = extract()
+
+    if data is None:
+        print("Connection failed")
+        return None
+
+    (df_vehicle_registration,
+     df_transport_wise,
+     df_time_of_occurrence,
+     df_suicide,
+     df_road_classification,
+     df_place_of_occurrence,
+     df_month_of_occurrence,
+     df_class_railway_accidents,
+     df_cause_wise_railway) = data
+
+    print("Data unpacked successfully!")
+    # =====================================transport_wise_year=====================================
+    # =================== By State ==
+    df_transport_wise_state_name = df_transport_wise.pivot_table(
+        index="state_name",
+        columns="mode_of_transport",
+        values="victims",
+        aggfunc="sum",
+        fill_value=0
+    ).astype(int).reset_index()
+    df_transport_wise_state_name = merge_vehicle_columns(df_transport_wise_state_name)
+
+    # =================== By Year ==
+    df_transport_wise_year = df_transport_wise.pivot_table(
+        index="year",
+        columns="mode_of_transport",
+        values="victims",
+        aggfunc="sum",
+        fill_value=0
+    ).astype(int).reset_index()
+    df_transport_wise_year = merge_vehicle_columns(df_transport_wise_year)
+
+
+
+    # =====================================time_of_occurrence=====================================
+    # =================== rail ===================
+    #filtering
+    df_time_of_occurrence_filtering_rail=df_time_of_occurrence[
+        (df_time_of_occurrence["accident_type"] != "Road Accidents")
+        & (df_time_of_occurrence["number_of_accidents"]>0)
+    ]
+    # =================== By State
+    df_time_of_occurrence_by_state_rail=df_time_of_occurrence_filtering_rail.pivot_table(
+        index="state_name",
+        columns="time",
+        values="number_of_accidents",
+        aggfunc="sum",
+        fill_value = 0
+    ).astype(int).reset_index()
+    # =================== By year
+    df_time_of_occurrence_by_year_rail=df_time_of_occurrence_filtering_rail.pivot_table(
+        index="year",
+        columns="time",
+        values="number_of_accidents",
+        aggfunc="sum",
+        fill_value = 0
+    ).astype(int).reset_index()
+    # =================== road ===================
+    # filtering
+    df_time_of_occurrence_filtering = df_time_of_occurrence[
+        (df_time_of_occurrence["accident_type"] == "Road Accidents")
+        & (df_time_of_occurrence["number_of_accidents"] > 0)
+        ]
+    # =================== By State
+    df_time_of_occurrence_by_state = df_time_of_occurrence_filtering.pivot_table(
+        index="state_name",
+        columns="time",
+        values="number_of_accidents",
+        aggfunc="sum",
+        fill_value=0
+    ).astype(int).reset_index()
+    # =================== By year
+    df_time_of_occurrence_by_year = df_time_of_occurrence_filtering.pivot_table(
+        index="year",
+        columns="time",
+        values="number_of_accidents",
+        aggfunc="sum",
+        fill_value=0
+    ).astype(int).reset_index()
+
+    # =====================================suicide=====================================
+    df_suicide = df_suicide[
+    (df_suicide["method_of_suicide"] == "By Coming Under Running Vehicles/Trains") &
+    (df_suicide["number_of_deaths"] > 0)
+    ].copy()
+    df_suicide=df_suicide.drop(columns="id")
+    df_suicide["number_of_deaths"]=df_suicide["number_of_deaths"].astype(int)
+    # =====================================road_classification with table=====================================
+    df_road_classification[["died","injured"]]=df_road_classification[["died","injured"]].astype(int)
+    df_road_classification_table=df_road_classification.drop(columns="id")
+    # =====================================road_classification=====================================
+    # =================== By State
+    #======== death
+    df_road_classification_by_state_death=df_road_classification.pivot_table(
+        index="state_name",
+        columns="road_type",
+        values="died",
+        aggfunc="sum",
+        fill_value=0
+    ).astype(int).reset_index()
+
+    # ======== injured
+    df_road_classification_by_state_injured = df_road_classification.pivot_table(
+        index="state_name",
+        columns="road_type",
+        values="injured",
+        aggfunc="sum",
+        fill_value=0
+    ).astype(int).reset_index()
+     #======== renaming column head
+    df_road_classification_by_state_injured.columns = [
+        f"{col}(injured)" if col != "state_name" else col
+        for col in df_road_classification_by_state_injured.columns
+    ]
+     #======== merging column head
+    df_road_classification_by_state=(
+        pd.merge(df_road_classification_by_state_death,
+        df_road_classification_by_state_injured,
+        on="state_name")
+    )
+    # =================== By year
+
+    df_road_classification_year=df_road_classification.pivot_table(
+        index="year",
+        columns="road_type",
+        values="died",
+        aggfunc="sum",
+        fill_value=0
+    ).astype(int).reset_index()
+
+    # ======== injured
+    df_road_classification_year_injured=df_road_classification.pivot_table(
+        index="year",
+        columns="road_type",
+        values="injured",
+        aggfunc="sum",
+        fill_value=0
+    ).astype(int).reset_index()
+
+    # ======== renaming column head
+
+    df_road_classification_year_injured.columns = [
+        f"{col}(injured)" if col != "year" else col
+        for col in df_road_classification_year_injured.columns
+    ]
+    # ======== merging column head
+    df_road_classification_by_year=(
+        pd.merge(df_road_classification_year,
+       df_road_classification_year_injured,on ="year")
+    )
+
+    # =====================================place_of_occurrence=====================================
+    # =================== By State
+    df_place_of_occurrence_by_state=df_place_of_occurrence.pivot_table(
+        index="state_name",
+        columns="place",
+        values="number_of_deaths",
+        aggfunc="sum",
+        fill_value=0
+    ).astype(int).reset_index()
+
+    # =================== By year
+    df_place_of_occurrence_year=df_place_of_occurrence.pivot_table(
+        index="year",
+        columns="place",
+        values="number_of_deaths",
+        aggfunc="sum",
+        fill_value=0
+    ).astype(int).reset_index()
+    # =====================================month=====================================
+    # ==================road====================
+    df_month_of_occurrence_road = df_month_of_occurrence[
+        (df_month_of_occurrence["accident_type"] == "Road Accidents")
+        & (df_month_of_occurrence["number_of_accidents"] > 0)
+        ].copy()
+
+    df_month_of_occurrence_road["number_of_accidents"] = df_month_of_occurrence_road[
+        "number_of_accidents"].astype(int)
+    df_month_of_occurrence_road=df_month_of_occurrence_road.drop(columns="id")
+    # ==================rail====================
+    df_month_of_occurrence_rail=df_month_of_occurrence[
+        (df_month_of_occurrence["accident_type"] != "Road Accidents")
+        & (df_month_of_occurrence["number_of_accidents"] > 0)
+    ].copy()
+    df_month_of_occurrence_rail["number_of_accidents"] = df_month_of_occurrence_rail[
+        "number_of_accidents"].astype(int)
+    df_month_of_occurrence_rail=df_month_of_occurrence_rail.drop(columns="id")
+    # =====================================vehicle_registration=====================================
+    df_vehicle_registration["registrations"]=df_vehicle_registration["registrations"].astype(int)
+    df_vehicle_registration=df_vehicle_registration.drop(columns="id")
+    # =====================================df_class_railway_accidents================Problems with dataset state_name==
+    # ===========died
+    df_class_railway_accidents_year_died=df_class_railway_accidents.pivot_table(
+        index="year",
+        columns="cause",
+        values="died",
+        aggfunc="sum",
+        fill_value=0
+    ).astype(int).reset_index()
+
+    # ===========injured
+    df_class_railway_accidents_year_injured=df_class_railway_accidents.pivot_table(
+        index="year",
+        columns="cause",
+        values="injured",
+        aggfunc="sum",
+        fill_value=0
+    ).astype(int).reset_index()
+
+    # ======== renaming column head
+    df_class_railway_accidents_year_injured.columns = [
+        f"{col}(injured)" if col != "year" else col
+        for col in df_class_railway_accidents_year_injured.columns
+    ]
+    # ======== merging column head
+    df_class_railway_accidents_year =pd.merge(df_class_railway_accidents_year_died,df_class_railway_accidents_year_injured,on="year")
+
+    # =====================================cause_wise_railway=====================================
+    # =================== By State
+    # ===========died
+    df_cause_wise_railway_by_state_died=df_cause_wise_railway.pivot_table(
+        index="state_name",
+        columns="cause",
+        values="died",
+        aggfunc="sum",
+        fill_value=0
+    ).astype(int).reset_index()
+    # ===========injured
+    df_cause_wise_railway_by_state_injured=df_cause_wise_railway.pivot_table(
+        index="state_name",
+        columns="cause",
+        values="injured",
+        aggfunc="sum",
+        fill_value=0
+    ).astype(int).reset_index()
+    # ======== renaming column head
+    df_cause_wise_railway_by_state_injured.columns=[
+        f"{col}(injured)" if col != "state_name" else col
+        for col in df_cause_wise_railway_by_state_injured.columns
+    ]
+    # ======== merging column head
+    df_cause_wise_railway_by_state=pd.merge(df_cause_wise_railway_by_state_injured,df_cause_wise_railway_by_state_died,on="state_name")
+
+    # =================== By year
+    # ===========died
+    df_cause_wise_railway_by_year_died=df_cause_wise_railway.pivot_table(
+        index="year",
+        columns="cause",
+        values="died",
+        aggfunc="sum",
+        fill_value=0
+    ).astype(int).reset_index()
+    # ===========injured
+    df_cause_wise_railway_by_year_injured=df_cause_wise_railway.pivot_table(
+        index="year",
+        columns="cause",
+        values="injured",
+        aggfunc="sum",
+        fill_value=0
+    ).astype(int).reset_index()
+    # ======== renaming column head
+    df_cause_wise_railway_by_year_injured.columns=[
+        f"{col}(injured)" if col != "year" else col
+        for col in df_cause_wise_railway_by_year_injured.columns
+    ]
+    # ======== merging column head
+    df_cause_wise_railway_by_year = pd.merge(df_cause_wise_railway_by_year_died,df_cause_wise_railway_by_year_injured,on="year")
+
+    # =====================================Merge=======================================
+    #==================road====================
+    # ===========year==========
+    df_year=[
+        df_transport_wise_year,
+        df_time_of_occurrence_by_year,
+        df_road_classification_by_year,
+        df_place_of_occurrence_year
+    ]
+    df_year= reduce(lambda left, right: pd.merge(left, right, on="year"), df_year)
+    # ===========state_name==========
+    df_state = [
+        df_transport_wise_state_name,
+        df_time_of_occurrence_by_state,
+        df_road_classification_by_state,
+        df_place_of_occurrence_by_state
+    ]
+    df_state_name = reduce(lambda left, right: pd.merge(left, right, on="state_name"), df_state)
+
+    # ==================rail====================
+    # ===========year==========
+    df_rail_year = [
+        df_class_railway_accidents_year,
+        df_time_of_occurrence_by_year_rail,
+        df_cause_wise_railway_by_year
+    ]
+    df_rail_year=reduce(lambda left, right: pd.merge(left, right, on="year"), df_rail_year)
+    # ===========state_name==========
+    df_rail_state_name = pd.merge(
+        df_time_of_occurrence_by_state_rail,
+        df_cause_wise_railway_by_state, on="state_name"
+    )
+    # =====================================print======================================
+
+    #print(df_state_name.to_string())
+    #print(f"\n{'=' * 750}")
+    #print(df_year.to_string())
+
+    #print(f"\n{'=' * 750}")
+    #print(df_rail_year.to_string())
+    #print(f"\n{'=' * 750}")
+
+    #print(df_rail_state_name.to_string())
+    #print(f"\n{'=' * 300}")
+
+    #print(f"\n{'=' * 300}")
+    #print(df_suicide.head(10).to_string())
+    #print(f"\n{'=' * 300}")
+    #print(df_vehicle_registration.head(10).to_string())
+
+    #print(f"\n{'=' * 300}")
+    #print(df_month_of_occurrence_rail.head(10).to_string())
+    #print(f"\n{'=' * 300}")
+    #print(df_month_of_occurrence_road.head(10).to_string())
+    #print(f"\n{'=' * 300}")
+
+
+    # =====================================return======================================
+
+    return (
+        # ===== road =====
+        df_year,
+        df_state_name,
+        # ===== rail =====
+        df_rail_year,
+        df_rail_state_name,
+        # ===== standalone =====
+        df_suicide,
+        df_vehicle_registration,
+        df_month_of_occurrence_rail,
+        df_month_of_occurrence_road,
+        #====road_classification====
+        df_road_classification_table
+    )
+
+
+if __name__ == "__main__":
+    transform()
+

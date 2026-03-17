@@ -4,7 +4,7 @@ import pandas as pd
 import pickle
 from functools import reduce
 
-CACHE_FILE = r"C:\Users\renji\OneDrive\Desktop\Accident data dump\data.pkl"
+CACHE_FILE = r"C:.pkl"
 
 def extract():
     with open(CACHE_FILE, "rb") as f:

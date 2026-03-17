@@ -1,0 +1,61 @@
+ETL python script for extracting data from database
+
+import pandas as pd
+from sqlalchemy import create_engine
+neon_database =create_engine( "require") # enter the detail for accessing database
+def extract():
+    try:
+        with neon_database.connect() as conn:
+            print("✓ Connection successful!")
+
+            df_vehicle_registration    = pd.read_sql('SELECT * FROM "vahan_vehicle_registrations"', conn)
+            df_transport_wise          = pd.read_sql('SELECT * FROM "Transport-wise Number of Persons Died in Road Accidents"', conn)
+            df_time_of_occurrence      = pd.read_sql('SELECT * FROM "Time of Occurrence-wise Number of Traffic Accidents"', conn)
+            df_suicide                 = pd.read_sql('SELECT * FROM "Suicide by Means Adopted"', conn)
+            df_road_classification     = pd.read_sql('SELECT * FROM "Road Classification-wise Nu Road Accidents,Injuries,Deaths"', conn)
+            df_place_of_occurrence     = pd.read_sql('SELECT * FROM "Place of Occurrence-wise Road Accident Deaths"', conn)
+            df_month_of_occurrence     = pd.read_sql('SELECT * FROM "Month of Occurrence-wise Number of Traffic Accidents"', conn)
+            df_class_railway_accidents = pd.read_sql('SELECT * FROM "Classification of Railway Accidents"', conn)
+            df_cause_wise_railway      = pd.read_sql('SELECT * FROM "Cause-wise Dist of Road Acc and Unmanned Railway Crossing Acc"', conn)
+
+            print("All tables imported")
+
+            return (
+                df_vehicle_registration,
+                df_transport_wise,
+                df_time_of_occurrence,
+                df_suicide,
+                df_road_classification,
+                df_place_of_occurrence,
+                df_month_of_occurrence,
+                df_class_railway_accidents,
+                df_cause_wise_railway
+            )
+
+    except:
+        print("connection failed")
+        return None
+
+### data presentation ###======================================
+
+data = extract()
+
+names_tables = [
+    "vehicle_registration",
+    "transport_wise",
+    "time_of_occurrence",
+    "suicide",
+    "road_classification",
+    "place_of_occurrence",
+    "month_of_occurrence",
+    "class_railway_accidents",
+    "cause_wise_railway"
+]
+
+#for name,df in zip(names_tables,data):
+    #print(f"\n{'=' * 40}")
+    #print(f"TABLE : {name}")
+    #print(f"Shape : {df.shape}")
+    #print(f"Columns: {list(df.columns)}")
+    #print(f"Types :\n{df.dtypes}")
+    #print(f"Sample:\n{df.head(8)}")

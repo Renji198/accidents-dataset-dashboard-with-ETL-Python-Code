@@ -15,7 +15,7 @@ def load(df_year, df_state_name, df_rail_year, df_rail_state_name,
          df_month_of_occurrence_rail, df_month_of_occurrence_road,df_road_classification_table):
 
     client = bigquery.Client.from_service_account_json(
-        r"C:\Users\renji\OneDrive\Desktop\Accident data dump\accidents-data-c058a61aee07.json")  # ← new key file
+        r"C:\Users.json")  # ← new key file
 
 
 

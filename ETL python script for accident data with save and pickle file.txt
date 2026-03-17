@@ -4,7 +4,7 @@ import pickle
 import os
 from extract import extract
 
-CACHE_FILE = r"C:\Users\renji\OneDrive\Desktop\Accident data dump\data.pkl" # this is a local data file
+CACHE_FILE = r"C:\.pkl" # this is a local data file
 
 def save():
     print("Fetching data :)")

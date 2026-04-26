@@ -13,6 +13,7 @@ Key highlights:
 5 years of data: 2018 to 2022
 Dual focus: road accidents (2,087,360) and railway accidents (109,780 + 8,393 crossing incidents)
 
+<img width="1013" height="676" alt="image" src="https://github.com/user-attachments/assets/4ce48755-6c10-4e7f-bbf8-c395aed432d0" />
 
 🏗️ Architecture & Data Pipeline
 Raw Dataset          Python ETL            Google BigQuery        Power BI
